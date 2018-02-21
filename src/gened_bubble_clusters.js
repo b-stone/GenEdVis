@@ -5,6 +5,8 @@
  * Organization and style inspired by:
  * https://bost.ocks.org/mike/chart/
  *
+ * grant_title,id,organization,total_amount,group,Grant start date,start_month,start_day,start_year
+ * New Mexico Business Roundtable,1,New Mexico Business Roundtable for Educational Excellence,5000,low,2/4/2010,2,4,2010
  */
 function bubbleChart() {
   // Constants for sizing
@@ -18,17 +20,16 @@ function bubbleChart() {
   // on which view mode is selected.
   var center = { x: width / 2, y: height / 2 };
 
-  var yearCenters = {
-    2008: { x: width / 3, y: height / 2 },
-    2009: { x: width / 2, y: height / 2 },
-    2010: { x: 2 * width / 3, y: height / 2 }
+  var clusterCenters = {
+    'Environmental': { x: width / 4, y: height / 2 },
+    'Graphics': { x: 3 * width / 4, y: height / 2 }
   };
 
   // X locations of the year titles.
-  var yearsTitleX = {
-    2008: 160,
-    2009: width / 2,
-    2010: width - 160
+  var clustersTitleX = {
+    'Environmental (L, H, NS, Q, FS)': 200,
+    'Graphics (A, Q, FS, H, G, CW, A)': width - 200
+    // 2010: 
   };
 
   // @v4 strength to apply to the position forces
@@ -74,7 +75,8 @@ function bubbleChart() {
   // Nice looking colors - no reason to buck the trend
   // @v4 scales now have a flattened naming scheme
   var fillColor = d3.scaleOrdinal()
-    .domain(['low', 'medium', 'high'])
+    // .domain(['low', 'medium', 'high']) // gened group is total possible regs, 1,2,3
+    .domain(['1', '2', '3']) // gened group is total possible regs, 1,2,3
     .range(['#d84b2a', '#beccae', '#7aa25c']);
 
 
@@ -93,7 +95,11 @@ function bubbleChart() {
   function createNodes(rawData) {
     // Use the max total_amount in the data as the max in the scale's domain
     // note we have to ensure the total_amount is a number.
-    var maxAmount = d3.max(rawData, function (d) { return +d.total_amount; });
+    // var maxAmount = d3.max(rawData, function (d) { return +d.total_amount;});
+    var maxAmount = d3.max(rawData, function (d) { return +d.numReqs;});
+
+    // @gened Instead of total_amount, I want the size of the nodes based on the number of 
+    // requirements satisfied.
 
     // Sizes bubbles based on area.
     // @v4: new flattened scale names.
@@ -107,13 +113,12 @@ function bubbleChart() {
     // working with data.
     var myNodes = rawData.map(function (d) {
       return {
-        id: d.id,
-        radius: radiusScale(+d.total_amount),
-        value: +d.total_amount,
-        name: d.grant_title,
-        org: d.organization,
-        group: d.group,
-        year: d.start_year,
+        id: d.id, // id gened
+        radius: radiusScale(+d.numReqs), // number of reqs satisfied CW+C)+...+SS
+        value: +d.numReqs,// number of reqs satisfied CW+C)+...+SS
+        name: d.Course, // Course
+        group: d.numReqs, // 0,1.2
+        cluster: d.Cluster, // Cluster
         x: Math.random() * 900,
         y: Math.random() * 800
       };
@@ -201,8 +206,8 @@ function bubbleChart() {
    * Provides a x value for each node to be used with the split by year
    * x force.
    */
-  function nodeYearPos(d) {
-    return yearCenters[d.year].x;
+  function nodeClusterPos(d) {
+    return clusterCenters[d.cluster].x;
   }
 
 
@@ -233,7 +238,7 @@ function bubbleChart() {
     showYearTitles();
 
     // @v4 Reset the 'x' force to draw the bubbles to their year centers
-    simulation.force('x', d3.forceX().strength(forceStrength).x(nodeYearPos));
+    simulation.force('x', d3.forceX().strength(forceStrength).x(nodeClusterPos));
 
     // @v4 We can reset the alpha value and restart the simulation
     simulation.alpha(1).restart();
@@ -243,7 +248,7 @@ function bubbleChart() {
    * Hides Year title displays.
    */
   function hideYearTitles() {
-    svg.selectAll('.year').remove();
+    svg.selectAll('.cluster').remove();
   }
 
   /*
@@ -252,15 +257,16 @@ function bubbleChart() {
   function showYearTitles() {
     // Another way to do this would be to create
     // the year texts once and then just hide them.
-    var yearsData = d3.keys(yearsTitleX);
-    var years = svg.selectAll('.year')
-      .data(yearsData);
+    var clustersData = d3.keys(clustersTitleX);
+    var clusters = svg.selectAll('.cluster')
+      .data(clustersData);
 
-    years.enter().append('text')
-      .attr('class', 'year')
-      .attr('x', function (d) { return yearsTitleX[d]; })
-      .attr('y', 40)
+    clusters.enter().append('text')
+      .attr('class', 'cluster')
+      .attr('x', function (d) { return clustersTitleX[d]; })
+      .attr('y', 80)
       .attr('text-anchor', 'middle')
+      .attr('font-size','20px')
       .text(function (d) { return d; });
   }
 
@@ -273,14 +279,15 @@ function bubbleChart() {
     // change outline to indicate hover state.
     d3.select(this).attr('stroke', 'black');
 
-    var content = '<span class="name">Title: </span><span class="value">' +
+    var content = '<span class="name">Course: </span><span class="value">' +
                   d.name +
                   '</span><br/>' +
-                  '<span class="name">Amount: </span><span class="value">$' +
-                  addCommas(d.value) +
-                  '</span><br/>' +
-                  '<span class="name">Year: </span><span class="value">' +
-                  d.year +
+                  // '<span class="name">Number of Reqs: </span><span class="value">$' +
+                  // //addCommas(d.value) +
+                  // d.value +
+                  // '</span><br/>' +
+                  '<span class="name">Cluster: </span><span class="value">' +
+                  d.cluster +
                   '</span>';
 
     tooltip.showTooltip(content, d3.event);
@@ -305,7 +312,7 @@ function bubbleChart() {
    * displayName is expected to be a string and either 'year' or 'all'.
    */
   chart.toggleDisplay = function (displayName) {
-    if (displayName === 'year') {
+    if (displayName === 'cluster') {
       splitBubbles();
     } else {
       groupBubbles();
@@ -378,8 +385,8 @@ function addCommas(nStr) {
 }
 
 // Load the data.
-d3.csv('data/gates_money.csv', display);
-// d3.csv('data/clusters.csv', display);
+// d3.csv('data/gates_money.csv', display);
+d3.csv('data/clusters.csv', display);
 
 // setup the buttons.
 setupButtons();
